@@ -3,7 +3,8 @@ Code ideas from https://github.com/Newmu/dcgan and tensorflow mnist dataset read
 """
 import numpy as np
 import scipy.misc as misc
-
+import pandas as pa
+import re
 
 class Classification_BatchDataset:
     path = ""
@@ -22,8 +23,11 @@ class Classification_BatchDataset:
         """
         print("Initializing DeepScores Classification Batch Dataset Reader...")
         self.path = records_list
+        self.class_names = pa.read_csv(self.path+"/class_names.csv", header=None)
 
-
+        config = open(self.path+"/config.txt", "r")
+        config_str = config.read()
+        self.tile_size = re.split('\)|,|\(', config_str)[4:6]
         self._read_images()
 
     def _read_images(self):
@@ -81,4 +85,5 @@ class Classification_BatchDataset:
 
 
 if __name__ == "__main__":
-    data_reader = Classification_BatchDataset("../Datasets/Deepscores/classification_data")
+    #data_reader = Classification_BatchDataset("../Datasets/Deepscores/classification_data")
+    data_reader = Classification_BatchDataset("../../classification_data")
