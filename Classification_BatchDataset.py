@@ -5,6 +5,7 @@ import numpy as np
 import scipy.misc as misc
 import pandas as pa
 import re
+import os
 
 class Classification_BatchDataset:
     path = ""
@@ -15,7 +16,7 @@ class Classification_BatchDataset:
     batch_offset = 0
     epochs_completed = 0
 
-    def __init__(self, records_list):
+    def __init__(self, records_list, seed = 444):
         """
         Initialize a file reader for the DeepScores classification data
         :param records_list: path to the dataset
@@ -23,35 +24,74 @@ class Classification_BatchDataset:
         """
         print("Initializing DeepScores Classification Batch Dataset Reader...")
         self.path = records_list
+        self.seed = seed
+
         self.class_names = pa.read_csv(self.path+"/class_names.csv", header=None)
 
         config = open(self.path+"/config.txt", "r")
         config_str = config.read()
         self.tile_size = re.split('\)|,|\(', config_str)[4:6]
+
+        self.tile_size[0] = int(self.tile_size[0])
+        self.tile_size[1] = int(self.tile_size[1])
+
         self._read_images()
 
+        # cast into arrays
+        self.images = np.vstack(self.images)
+        self.annotations = np.array(self.annotations)
+
+        # Shuffle the data
+        perm = np.arange(self.images.shape[0])
+        np.random.shuffle(perm)
+        self.images = self.images[perm]
+        self.annotations = self.annotations[perm]
+
+
+
+
     def _read_images(self):
-        self.__channels = True
-        self.images = np.array([self._transform(filename['image']) for filename in self.files])
-        self.__channels = False
-        self.annotations = np.array(
-            [np.expand_dims(self._transform(filename['annotation']), axis=3) for filename in self.files])
-        print (self.images.shape)
-        print (self.annotations.shape)
+        for folder in os.listdir(self.path):
+            if os.path.isdir(self.path +"/"+folder) and max(self.class_names[1].isin([folder])):
+                    class_index = int(self.class_names[self.class_names[1] == folder][0])
+                    self.load_class(folder,class_index)
+                    print(folder + " loaded")
 
-    def _transform(self, filename):
-        image = misc.imread(filename)
-        if self.__channels and len(image.shape) < 3:  # make sure images are of shape(h,w,3)
-            image = np.array([image for i in range(3)])
 
-        if self.image_options.get("resize", False) and self.image_options["resize"]:
-            resize_size = int(self.image_options["resize_size"])
-            resize_image = misc.imresize(image,
-                                         [resize_size, resize_size], interp='nearest')
-        else:
-            resize_image = image
+        # self.__channels = True
+        # self.images = np.array([self._transform(filename['image']) for filename in self.files])
+        # self.__channels = False
+        # self.annotations = np.array(
+        #     [np.expand_dims(self._transform(filename['annotation']), axis=3) for filename in self.files])
+        # print (self.images.shape)
+        # print (self.annotations.shape)
 
-        return np.array(resize_image)
+
+
+    def load_class(self, folder, class_index):
+        # move trough images in folder
+        for image in os.listdir(self.path +"/"+folder):
+            self.load_image(folder, image, class_index)
+        return None
+
+    def load_image(self,folder,image, class_index):
+        image = misc.imread(self.path + "/" + folder + "/" + image)
+        nr_x = image.shape[0]/self.tile_size[0]
+        nr_y = image.shape[1]/self.tile_size[1]
+
+        for x_i in xrange(0, nr_x):
+            for y_i in xrange(0, nr_y):
+                self.images.append(image[y_i*self.tile_size[0]:(y_i+1)*self.tile_size[0], x_i*self.tile_size[1]:(x_i+1)*self.tile_size[1]])
+                self.annotations.append(class_index)
+                if self.images[len(self.images)-1].shape != (self.tile_size[0],self.tile_size[1]):
+                    print("sadf")
+
+                # show image
+                # from PIL import Image
+                # im = Image.fromarray(image[y_i*self.tile_size[0]:(y_i+1)*self.tile_size[0], x_i*self.tile_size[1]:(x_i+1)*self.tile_size[1]])
+                # im.show()
+
+        return None
 
     def get_records(self):
         return self.images, self.annotations
@@ -85,5 +125,5 @@ class Classification_BatchDataset:
 
 
 if __name__ == "__main__":
-    #data_reader = Classification_BatchDataset("../Datasets/Deepscores/classification_data")
-    data_reader = Classification_BatchDataset("../../classification_data")
+    data_reader = Classification_BatchDataset("../Datasets/DeepScores/classification_data")
+    #data_reader = Classification_BatchDataset("../../classification_data")
