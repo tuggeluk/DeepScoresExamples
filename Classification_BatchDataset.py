@@ -38,16 +38,21 @@ class Classification_BatchDataset:
         self._read_images()
 
         # cast into arrays
-        self.images = np.vstack(self.images)
-        self.annotations = np.array(self.annotations)
+        self.images = np.stack(self.images)
+        self.annotations = np.stack(self.annotations)
 
         # Shuffle the data
         perm = np.arange(self.images.shape[0])
+        np.random.seed(self.seed)
         np.random.shuffle(perm)
         self.images = self.images[perm]
         self.annotations = self.annotations[perm]
 
-
+        # show image
+        # from PIL import Image
+        # im = Image.fromarray(self.images[234])
+        # im.show()
+        # print self.annotations[234]
 
 
     def _read_images(self):
@@ -76,15 +81,15 @@ class Classification_BatchDataset:
 
     def load_image(self,folder,image, class_index):
         image = misc.imread(self.path + "/" + folder + "/" + image)
-        nr_x = image.shape[0]/self.tile_size[0]
-        nr_y = image.shape[1]/self.tile_size[1]
+        nr_y = image.shape[0]/self.tile_size[0]
+        nr_x = image.shape[1]/self.tile_size[1]
 
         for x_i in xrange(0, nr_x):
             for y_i in xrange(0, nr_y):
                 self.images.append(image[y_i*self.tile_size[0]:(y_i+1)*self.tile_size[0], x_i*self.tile_size[1]:(x_i+1)*self.tile_size[1]])
                 self.annotations.append(class_index)
-                if self.images[len(self.images)-1].shape != (self.tile_size[0],self.tile_size[1]):
-                    print("sadf")
+                # if self.images[len(self.images)-1].shape != (self.tile_size[0],self.tile_size[1]):
+                #     print("sadf")
 
                 # show image
                 # from PIL import Image
@@ -125,5 +130,5 @@ class Classification_BatchDataset:
 
 
 if __name__ == "__main__":
-    data_reader = Classification_BatchDataset("../Datasets/DeepScores/classification_data")
-    #data_reader = Classification_BatchDataset("../../classification_data")
+    #data_reader = Classification_BatchDataset("../Datasets/DeepScores/classification_data")
+    data_reader = Classification_BatchDataset("../Datasets/classification_data")
