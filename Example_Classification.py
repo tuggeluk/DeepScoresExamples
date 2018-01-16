@@ -1,141 +1,140 @@
-"""Convolutional Neural Network Estimator for DeepScores Classification, built with tf.layers."""
+"""Convolutional Neural Network Estimator for DeepScores Classification, built with Tensorflow
+"""
+
+import argparse
+import sys
 
 import numpy as np
 import tensorflow as tf
+import Classification_BatchDataset
+import TensorflowUtils as utils
 
-def cnn_model_fn(features, labels, mode):
-  """Model function for CNN."""
-  # Input Layer
-  # Reshape X to 4-D tensor: [batch_size, width, height, channels]
-  # MNIST images are 28x28 pixels, and have one color channel
-  input_layer = tf.reshape(features["x"], [-1, 28, 28, 1])
 
-  # Convolutional Layer #1
-  # Computes 32 features using a 5x5 filter with ReLU activation.
-  # Padding is added to preserve width and height.
-  # Input Tensor Shape: [batch_size, 28, 28, 1]
-  # Output Tensor Shape: [batch_size, 28, 28, 32]
-  conv1 = tf.layers.conv2d(
-      inputs=input_layer,
-      filters=32,
-      kernel_size=[5, 5],
-      padding="same",
-      activation=tf.nn.relu)
+FLAGS = None
 
-  # Pooling Layer #1
-  # First max pooling layer with a 2x2 filter and stride of 2
-  # Input Tensor Shape: [batch_size, 28, 28, 32]
-  # Output Tensor Shape: [batch_size, 14, 14, 32]
-  pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
 
-  # Convolutional Layer #2
-  # Computes 64 features using a 5x5 filter.
-  # Padding is added to preserve width and height.
-  # Input Tensor Shape: [batch_size, 14, 14, 32]
-  # Output Tensor Shape: [batch_size, 14, 14, 64]
-  conv2 = tf.layers.conv2d(
-      inputs=pool1,
-      filters=64,
-      kernel_size=[5, 5],
-      padding="same",
-      activation=tf.nn.relu)
+def deepscores_cnn(image, nr_class):
 
-  # Pooling Layer #2
-  # Second max pooling layer with a 2x2 filter and stride of 2
-  # Input Tensor Shape: [batch_size, 14, 14, 64]
-  # Output Tensor Shape: [batch_size, 7, 7, 64]
-  pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
+    # placeholder for dropout input
+    keep_prob = tf.placeholder(tf.float32)
 
-  # Flatten tensor into a batch of vectors
-  # Input Tensor Shape: [batch_size, 7, 7, 64]
-  # Output Tensor Shape: [batch_size, 7 * 7 * 64]
-  pool2_flat = tf.reshape(pool2, [-1, 7 * 7 * 64])
+    # five layers of 3x3 convolutions, followed by relu, 2x2-maxpool and dropout
+    W1 = utils.weight_variable([3, 3, 1, 32], name="W1")
+    b1 = utils.bias_variable([32], name="b1")
+    conv1 = utils.conv2d_basic(image, W1, b1, name="conv1")
+    relu1 = tf.nn.relu(conv1, name="relu1")
+    pool1 = utils.max_pool_2x2(relu1)
+    dropout1 = tf.nn.dropout(pool1, keep_prob=keep_prob)
 
-  # Dense Layer
-  # Densely connected layer with 1024 neurons
-  # Input Tensor Shape: [batch_size, 7 * 7 * 64]
-  # Output Tensor Shape: [batch_size, 1024]
-  dense = tf.layers.dense(inputs=pool2_flat, units=1024, activation=tf.nn.relu)
+    W2 = utils.weight_variable([3, 3, 32, 64], name="W2")
+    b2 = utils.bias_variable([64], name="b2")
+    conv2 = utils.conv2d_basic(dropout1, W2, b2, name="conv2")
+    relu2 = tf.nn.relu(conv2, name="relu2")
+    pool2 = utils.max_pool_2x2(relu2)
+    dropout2 = tf.nn.dropout(pool2, keep_prob=keep_prob)
 
-  # Add dropout operation; 0.6 probability that element will be kept
-  dropout = tf.layers.dropout(
-      inputs=dense, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+    W3 = utils.weight_variable([3, 3, 64, 128], name="W3")
+    b3 = utils.bias_variable([128], name="b3")
+    conv3 = utils.conv2d_basic(dropout2, W3, b3, name="conv3")
+    relu3 = tf.nn.relu(conv3, name="relu3")
+    pool3 = utils.max_pool_2x2(relu3)
+    dropout3 = tf.nn.dropout(pool3, keep_prob=keep_prob)
 
-  # Logits layer
-  # Input Tensor Shape: [batch_size, 1024]
-  # Output Tensor Shape: [batch_size, 10]
-  logits = tf.layers.dense(inputs=dropout, units=10)
+    W4 = utils.weight_variable([3, 3, 128, 256], name="W4")
+    b4 = utils.bias_variable([256], name="b4")
+    conv4 = utils.conv2d_basic(dropout3, W4, b4, name="conv4")
+    relu4 = tf.nn.relu(conv4, name="relu4")
+    pool4 = utils.max_pool_2x2(relu4)
+    dropout4 = tf.nn.dropout(pool4, keep_prob=keep_prob)
 
-  predictions = {
-      # Generate predictions (for PREDICT and EVAL mode)
-      "classes": tf.argmax(input=logits, axis=1),
-      # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-      # `logging_hook`.
-      "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-  }
-  if mode == tf.estimator.ModeKeys.PREDICT:
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-  # Calculate Loss (for both TRAIN and EVAL modes)
-  onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=10)
-  loss = tf.losses.softmax_cross_entropy(
-      onehot_labels=onehot_labels, logits=logits)
+    W5 = utils.weight_variable([3, 3, 256, 512], name="W5")
+    b5 = utils.bias_variable([512], name="b5")
+    conv5 = utils.conv2d_basic(dropout4, W5, b5, name="conv5")
+    relu5 = tf.nn.relu(conv5, name="relu5")
+    pool5 = utils.max_pool_2x2(relu5)
+    dropout5 = tf.nn.dropout(pool5, keep_prob=keep_prob)
 
-  # Configure the Training Op (for TRAIN mode)
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
-    train_op = optimizer.minimize(
-        loss=loss,
-        global_step=tf.train.get_global_step())
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    # to fully connected layers
+    # downsampled 5 times so feature maps should be 32 times smaller
+    # size is 6*3*512
+    W_fc1 = utils.weight_variable([7*4*512, 1024])
+    b_fc1 = utils.bias_variable([1024])
 
-  # Add evaluation metrics (for EVAL mode)
-  eval_metric_ops = {
-      "accuracy": tf.metrics.accuracy(
-          labels=labels, predictions=predictions["classes"])}
-  return tf.estimator.EstimatorSpec(
-      mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+    dropout5_flat = tf.reshape(dropout5, [-1, 7*4*512])
+    h_fc1 = tf.nn.relu(tf.matmul(dropout5_flat, W_fc1) + b_fc1)
+
+    W_fc2 = utils.weight_variable([1024, nr_class])
+    b_fc2 = utils.bias_variable([nr_class])
+
+    y_conv = tf.matmul(h_fc1, W_fc2) + b_fc2
+
+    return y_conv, keep_prob
 
 
 def main(unused_argv):
-  # Load training and eval data
-  mnist = tf.contrib.learn.datasets.load_dataset("mnist")
-  train_data = mnist.train.images  # Returns np.array
-  train_labels = np.asarray(mnist.train.labels, dtype=np.int32)
-  eval_data = mnist.test.images  # Returns np.array
-  eval_labels = np.asarray(mnist.test.labels, dtype=np.int32)
+    print("Setting up image reader...")
+    data_reader = Classification_BatchDataset.class_dataset_reader(FLAGS.data_dir)
+    data_reader.read_images()
 
-  # Create the Estimator
-  mnist_classifier = tf.estimator.Estimator(
-      model_fn=cnn_model_fn, model_dir="/tmp/mnist_convnet_model")
+    # input-data placeholder
+    x = tf.placeholder(tf.float32, [None, data_reader.tile_size[0],data_reader.tile_size[1],1])
 
-  # Set up logging for predictions
-  # Log the values in the "Softmax" tensor with label "probabilities"
-  tensors_to_log = {"probabilities": "softmax_tensor"}
-  logging_hook = tf.train.LoggingTensorHook(
-      tensors=tensors_to_log, every_n_iter=50)
+    # input-label placeholder
+    y_ = tf.placeholder(tf.float32, [None, data_reader.nr_classes])
 
-  # Train the model
-  train_input_fn = tf.estimator.inputs.numpy_input_fn(
-      x={"x": train_data},
-      y=train_labels,
-      batch_size=100,
-      num_epochs=None,
-      shuffle=True)
-  mnist_classifier.train(
-      input_fn=train_input_fn,
-      steps=20000,
-      hooks=[logging_hook])
+    # Build the graph for the deep net
+    y_conv, keep_prob = deepscores_cnn(x, data_reader.nr_classes)
 
-  # Evaluate the model and print results
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
-      x={"x": eval_data},
-      y=eval_labels,
-      num_epochs=1,
-      shuffle=False)
-  eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-  print(eval_results)
+    with tf.name_scope('loss'):
+        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_,
+                                                                logits=y_conv)
+    cross_entropy = tf.reduce_mean(cross_entropy)
+
+    with tf.name_scope('adam_optimizer'):
+        train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+
+    with tf.name_scope('accuracy'):
+        correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
+        correct_prediction = tf.cast(correct_prediction, tf.float32)
+    accuracy = tf.reduce_mean(correct_prediction)
 
 
-if __name__ == "__main__":
-    main()
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for i in range(20000):
+            batch = data_reader.next_batch(FLAGS.batch_size)
+            if i % 10000 == 0:
+                train_accuracy = accuracy.eval(feed_dict={
+                    x: batch[0], y_: batch[1], keep_prob: 1.0})
+                print('step %d, training accuracy %g' % (i, train_accuracy))
+            if i % 100 == 0:
+                _, cross_ent = sess.run([train_step, cross_entropy],feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.8})
+                print(cross_ent)
+            train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.8})
+
+        # import PIL
+        # import pandas as pa
+        # batch_nr = 2
+        # PIL.Image.fromarray(np.squeeze(batch[0][batch_nr], -1)).show()
+        #
+        # class_names = pa.read_csv("../Datasets/DeepScores/classification_data" + "/class_names.csv", header=None)
+        # print(class_names[1][np.where(batch[1][batch_nr] == 1)[0][0]])
+
+        test_images, test_labels = data_reader.get_test_records()
+        print('test accuracy %g' % accuracy.eval(feed_dict={
+            x: test_images, y_: test_labels, keep_prob: 1.0}))
+
+
+
+
+
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--data_dir', type=str,
+                      default='../Datasets/DeepScores/classification_data',
+                      help='Directory for storing input data')
+  parser.add_argument("--batch_size", type=int, default=10, help="batch size for training")
+
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

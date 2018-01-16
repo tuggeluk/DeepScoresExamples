@@ -6,8 +6,9 @@ import scipy.misc as misc
 import pandas as pa
 import re
 import os
+import sys
 
-class Classification_BatchDataset:
+class class_dataset_reader:
     path = ""
     class_mappings = ""
     files = []
@@ -16,7 +17,7 @@ class Classification_BatchDataset:
     batch_offset = 0
     epochs_completed = 0
 
-    def __init__(self, records_list, seed = 444):
+    def __init__(self, records_list, seed = 444, split = 0.2, min_nr = 2, one_hot=True):
         """
         Initialize a file reader for the DeepScores classification data
         :param records_list: path to the dataset
@@ -35,11 +36,53 @@ class Classification_BatchDataset:
         self.tile_size[0] = int(self.tile_size[0])
         self.tile_size[1] = int(self.tile_size[1])
 
-        self._read_images()
+        self.seed = seed
+        self.min_nr = min_nr
+        self.split = split
+        self.one_hot = one_hot
+
+        # show image
+        # from PIL import Image
+        # im = Image.fromarray(self.images[234])
+        # im.show()
+        # print self.annotations[234]
+
+    def read_images(self):
+        for folder in os.listdir(self.path):
+            if os.path.isdir(self.path +"/"+folder) and max(self.class_names[1].isin([folder])):
+                    class_index = int(self.class_names[self.class_names[1] == folder][0])
+                    self.load_class(folder,class_index)
+                    print(folder + " loaded")
 
         # cast into arrays
         self.images = np.stack(self.images)
         self.annotations = np.stack(self.annotations)
+
+        # extract test data
+        test_indices = []
+        train_indices = []
+        print("splitting data: " + str(1 - self.split) + "-training " + str(self.split) + "-testing")
+        for cla in np.unique(self.annotations):
+            if sum(self.annotations == cla) < self.min_nr:
+                print(
+                "Less than " + str(self.min_nr) + " occurences - removing class " + self.class_names[1][cla])
+            else:
+                # do split
+                cla_indices = np.where(self.annotations == cla)[0]
+                np.random.shuffle(cla_indices)
+                train_indices.append(cla_indices[0:int(len(cla_indices) * (1 - self.split))])
+                test_indices.append(cla_indices[int(len(cla_indices) * (1 - self.split)):len(cla_indices)])
+
+        train_indices = np.concatenate(train_indices)
+        test_indices = np.concatenate(test_indices)
+
+
+
+        self.test_images = self.images[test_indices]
+        self.test_annotations = self.annotations[test_indices]
+
+        self.images = self.images[train_indices]
+        self.annotations = self.annotations[train_indices]
 
         # Shuffle the data
         perm = np.arange(self.images.shape[0])
@@ -48,19 +91,18 @@ class Classification_BatchDataset:
         self.images = self.images[perm]
         self.annotations = self.annotations[perm]
 
-        # show image
-        # from PIL import Image
-        # im = Image.fromarray(self.images[234])
-        # im.show()
-        # print self.annotations[234]
+        # Reshape to fit Tensorflow
+        self.images = np.expand_dims(self.images, -1)
+        self.test_images = np.expand_dims(self.test_images, -1)
 
+        if sum(np.unique(self.annotations) != np.unique(self.test_annotations)) != 0:
+            print("NOT THE SAME CLASSES IN TRAIN AND TEST - EXITING")
+            sys.exit(1)
 
-    def _read_images(self):
-        for folder in os.listdir(self.path):
-            if os.path.isdir(self.path +"/"+folder) and max(self.class_names[1].isin([folder])):
-                    class_index = int(self.class_names[self.class_names[1] == folder][0])
-                    self.load_class(folder,class_index)
-                    print(folder + " loaded")
+        self.nr_classes = max(self.test_annotations) + 1
+        if self.one_hot:
+            self.annotations = np.eye(self.nr_classes, dtype=np.uint8)[self.annotations]
+            self.test_annotations = np.eye(self.nr_classes, dtype=np.uint8)[self.test_annotations]
 
 
         # self.__channels = True
@@ -70,8 +112,6 @@ class Classification_BatchDataset:
         #     [np.expand_dims(self._transform(filename['annotation']), axis=3) for filename in self.files])
         # print (self.images.shape)
         # print (self.annotations.shape)
-
-
 
     def load_class(self, folder, class_index):
         # move trough images in folder
@@ -104,6 +144,9 @@ class Classification_BatchDataset:
     def reset_batch_offset(self, offset=0):
         self.batch_offset = offset
 
+    def get_test_records(self):
+        return self.test_images, self.test_annotations
+
     def next_batch(self, batch_size):
         start = self.batch_offset
         self.batch_offset += batch_size
@@ -130,5 +173,5 @@ class Classification_BatchDataset:
 
 
 if __name__ == "__main__":
-    #data_reader = Classification_BatchDataset("../Datasets/DeepScores/classification_data")
-    data_reader = Classification_BatchDataset("../Datasets/classification_data")
+    data_reader = class_dataset_reader("../Datasets/DeepScores/classification_data")
+    #data_reader = Classification_BatchDataset("../Datasets/classification_data")
