@@ -18,7 +18,7 @@ class seg_dataset_reader:
     batch_offset = 0
     epochs_completed = 0
 
-    def __init__(self, deepscores_path, max_pages=20, crop=True, crop_size=[1000,1000], test_size=10):
+    def __init__(self, deepscores_path, max_pages=40, crop=True, crop_size=[1000,1000], test_size=20):
         """
         Initialize a file reader for the DeepScores classification data
         :param records_list: path to the dataset
@@ -40,6 +40,11 @@ class seg_dataset_reader:
 
         if max_pages is None:
             max_pages = len(images_list)
+            import sys
+            sys.exit(1)
+
+        if max_pages > len(images_list):
+            print("Not enough data, only " + str(len(images_list)) + " available")
 
         if test_size >= max_pages:
             print("Test set too big ("+str(test_size)+"), max_pages is: "+str(max_pages))
@@ -62,7 +67,10 @@ class seg_dataset_reader:
             self.images.append(dat[0])
             self.annotations.append(dat[1])
         self.images = np.array(self.images)
+        self.images = np.expand_dims(self.images, -1)
+
         self.annotations = np.array(self.annotations)
+        self.annotations = np.expand_dims(self.annotations, -1)
 
         print("Training set done")
         dat_test = [self._transform(filename) for filename in test_image_list]
@@ -70,9 +78,12 @@ class seg_dataset_reader:
             self.test_images.append(dat[0])
             self.test_annotations.append(dat[1])
         self.test_images = np.array(self.test_images)
+        self.test_images = np.expand_dims(self.test_images, -1)
+
         self.test_annotations = np.array(self.test_annotations)
+        self.test_annotations = np.expand_dims(self.test_annotations, -1)
         print("Test set done")
-        print("asdf")
+
 
     def _transform(self, filename):
         image = misc.imread(filename)
@@ -84,6 +95,10 @@ class seg_dataset_reader:
             import pdb
             pdb.set_trace()
             sys.exit(1)
+
+        if image.shape[-1] != 1:
+            # take mean over color channels, image BW anyways --> fix in dataset creation
+            image = np.mean(image, -1)
 
         if self.crop:
             coord_0 = randint(0, (image.shape[0] - self.crop_size[0]))
