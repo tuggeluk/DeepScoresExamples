@@ -3,62 +3,112 @@ Code ideas from https://github.com/Newmu/dcgan and tensorflow mnist dataset read
 """
 import numpy as np
 import scipy.misc as misc
-import pandas as pa
-import re
 import os
+import glob
+from random import shuffle, randint
 
-class Classification_BatchDataset:
+class seg_dataset_reader:
     path = ""
     class_mappings = ""
     files = []
     images = []
     annotations = []
+    test_images = []
+    test_annotations = []
     batch_offset = 0
     epochs_completed = 0
 
-    def __init__(self, records_list):
+    def __init__(self, deepscores_path, max_pages=20, crop=True, crop_size=[1000,1000], test_size=10):
         """
         Initialize a file reader for the DeepScores classification data
         :param records_list: path to the dataset
         sample record: {'image': f, 'annotation': annotation_file, 'filename': filename}
         """
         print("Initializing DeepScores Classification Batch Dataset Reader...")
-        self.path = records_list
-        self.class_names = pa.read_csv(self.path+"/class_names.csv", header=None)
+        self.path = deepscores_path
+        self.max_pages = max_pages
+        self.crop = crop
+        self.crop_size = crop_size
+        self.test_size = test_size
 
-        config = open(self.path+"/config.txt", "r")
-        config_str = config.read()
-        self.tile_size = re.split('\)|,|\(', config_str)[4:6]
-        self._read_images()
+        images_list = []
+        images_glob = os.path.join(self.path, "images_png", '*.' + 'png')
+        images_list.extend(glob.glob(images_glob))
 
-    def _read_images(self):
-        self.__channels = True
-        self.images = np.array([self._transform(filename['image']) for filename in self.files])
-        self.__channels = False
-        self.annotations = np.array(
-            [np.expand_dims(self._transform(filename['annotation']), axis=3) for filename in self.files])
-        print (self.images.shape)
-        print (self.annotations.shape)
+        #shuffle image list
+        shuffle(images_list)
+
+        if max_pages is None:
+            max_pages = len(images_list)
+
+        if test_size >= max_pages:
+            print("Test set too big ("+str(test_size)+"), max_pages is: "+str(max_pages))
+            import sys
+            sys.exit(1)
+
+        print("Splitting dataset, train: "+str(max_pages-test_size)+" images, test: "+str(test_size)+ " images")
+        test_image_list = images_list[0:test_size]
+        train_image_list = images_list[test_size:max_pages]
+
+        # test_annotation_list = [image_file.replace("/images_png/", "/pix_annotations_png/") for image_file in test_image_list]
+        # train_annotation_list = [image_file.replace("/images_png/", "/pix_annotations_png/") for image_file in train_image_list]
+
+        self._read_images(test_image_list,train_image_list)
+
+    def _read_images(self,test_image_list,train_image_list):
+
+        dat_train = [self._transform(filename) for filename in train_image_list]
+        for dat in dat_train:
+            self.images.append(dat[0])
+            self.annotations.append(dat[1])
+        self.images = np.array(self.images)
+        self.annotations = np.array(self.annotations)
+
+        print("Training set done")
+        dat_test = [self._transform(filename) for filename in test_image_list]
+        for dat in dat_test:
+            self.test_images.append(dat[0])
+            self.test_annotations.append(dat[1])
+        self.test_images = np.array(self.test_images)
+        self.test_annotations = np.array(self.test_annotations)
+        print("Test set done")
+        print("asdf")
 
     def _transform(self, filename):
         image = misc.imread(filename)
-        if self.__channels and len(image.shape) < 3:  # make sure images are of shape(h,w,3)
-            image = np.array([image for i in range(3)])
+        annotation = misc.imread(filename.replace("/images_png/", "/pix_annotations_png/"))
+        print("im working!" + str(randint(0,10)))
+        if not image.shape[0:2] == annotation.shape[0:2]:
+            print("input and annotation have different sizes!")
+            import sys
+            import pdb
+            pdb.set_trace()
+            sys.exit(1)
 
-        if self.image_options.get("resize", False) and self.image_options["resize"]:
-            resize_size = int(self.image_options["resize_size"])
-            resize_image = misc.imresize(image,
-                                         [resize_size, resize_size], interp='nearest')
-        else:
-            resize_image = image
+        if self.crop:
+            coord_0 = randint(0, (image.shape[0] - self.crop_size[0]))
+            coord_1 = randint(0, (image.shape[1] - self.crop_size[1]))
 
-        return np.array(resize_image)
+            image = image[coord_0:(coord_0+self.crop_size[0]),coord_1:(coord_1+self.crop_size[1])]
+            annotation = annotation[coord_0:(coord_0 + self.crop_size[0]), coord_1:(coord_1 + self.crop_size[1])]
+
+        return [image, annotation]
+
+    # from PIL import Image
+    # im = Image.fromarray(image)
+    # im.show()
+    # im = Image.fromarray(annotation)
+    # im.show()
+
 
     def get_records(self):
         return self.images, self.annotations
 
     def reset_batch_offset(self, offset=0):
         self.batch_offset = offset
+
+    def get_test_records(self):
+        return self.test_images, self.test_annotations
 
     def next_batch(self, batch_size):
         start = self.batch_offset
@@ -86,5 +136,4 @@ class Classification_BatchDataset:
 
 
 if __name__ == "__main__":
-    data_reader = Classification_BatchDataset("../Datasets/DeepScores/classification_data")
-    #data_reader = Classification_BatchDataset("../../classification_data")
+    data_reader = seg_dataset_reader("/Users/tugg/datasets/DeepScores")
