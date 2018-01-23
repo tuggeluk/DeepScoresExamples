@@ -139,7 +139,7 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   parser.add_argument("--batch_size", type=int, default=200, help="batch size for training")
   parser.add_argument("--test_batch_size", type=int, default=200, help="batch size for training")
-  parser.add_argument("--model_path", type=str, default="../Models/deepscores_class.ckpt", help="batch size for training")
+  parser.add_argument("--model_path", type=str, default="/Models/deepscores_class.ckpt", help="batch size for training")
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
