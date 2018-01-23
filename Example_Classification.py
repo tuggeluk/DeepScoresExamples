@@ -98,6 +98,8 @@ def main(unused_argv):
         correct_prediction = tf.cast(correct_prediction, tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
+    # Add ops to save and restore all the variables.
+    saver = tf.train.Saver()
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -124,7 +126,9 @@ def main(unused_argv):
         print('test accuracy %g' % accuracy.eval(feed_dict={
             x: test_images[0:FLAGS.test_batch_size], y_[0:FLAGS.test_batch_size]: test_labels, keep_prob: 1.0}))
 
-
+        # Save the variables to disk.
+        save_path = saver.save(sess, FLAGS.model_path)
+        print("Model saved in file: %s" % save_path)
 
 
 
@@ -135,7 +139,7 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   parser.add_argument("--batch_size", type=int, default=200, help="batch size for training")
   parser.add_argument("--test_batch_size", type=int, default=200, help="batch size for training")
-
+  parser.add_argument("--model_path", type=str, default="../Models/deepscores_class.ckpt", help="batch size for training")
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
