@@ -122,7 +122,7 @@ def main(unused_argv):
 
         test_images, test_labels = data_reader.get_test_records()
         print('test accuracy %g' % accuracy.eval(feed_dict={
-            x: test_images, y_: test_labels, keep_prob: 1.0}))
+            x: test_images[0:FLAGS.test_batch_size], y_[0:FLAGS.test_batch_size]: test_labels, keep_prob: 1.0}))
 
 
 
@@ -131,9 +131,11 @@ def main(unused_argv):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--data_dir', type=str,
-                      default='../Datasets/DeepScores/classification_data',
+                      default='../Datasets/DeepScores/DeepScores_classification',
                       help='Directory for storing input data')
-  parser.add_argument("--batch_size", type=int, default=10, help="batch size for training")
+  parser.add_argument("--batch_size", type=int, default=200, help="batch size for training")
+  parser.add_argument("--test_batch_size", type=int, default=200, help="batch size for training")
+
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
