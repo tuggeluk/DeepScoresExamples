@@ -56,7 +56,7 @@ def deepscores_cnn(image, nr_class):
 
     # to fully connected layers
     # downsampled 5 times so feature maps should be 32 times smaller
-    # size is 6*3*512
+    # size is 7*4*512
     W_fc1 = utils.weight_variable([7*4*512, 1024])
     b_fc1 = utils.bias_variable([1024])
 
