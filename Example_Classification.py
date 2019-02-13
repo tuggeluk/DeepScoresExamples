@@ -124,7 +124,7 @@ def main(unused_argv):
 
         test_images, test_labels = data_reader.get_test_records()
         print('test accuracy %g' % accuracy.eval(feed_dict={
-            x: test_images[0:FLAGS.test_batch_size], y_[0:FLAGS.test_batch_size]: test_labels, keep_prob: 1.0}))
+            x: test_images[0:FLAGS.test_batch_size], y_: test_labels[0:FLAGS.test_batch_size], keep_prob: 1.0}))
 
         # Save the variables to disk.
         save_path = saver.save(sess, FLAGS.model_path)
