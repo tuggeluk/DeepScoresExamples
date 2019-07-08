@@ -1,6 +1,7 @@
 """
 Code ideas from https://github.com/Newmu/dcgan and tensorflow mnist dataset reader
 """
+from past.builtins import xrange
 import numpy as np
 import scipy.misc as misc
 import pandas as pa
@@ -121,8 +122,8 @@ class class_dataset_reader:
 
     def load_image(self,folder,image, class_index):
         image = misc.imread(self.path + "/" + folder + "/" + image)
-        nr_y = image.shape[0]/self.tile_size[0]
-        nr_x = image.shape[1]/self.tile_size[1]
+        nr_y = image.shape[0] // self.tile_size[0]
+        nr_x = image.shape[1] // self.tile_size[1]
 
         for x_i in xrange(0, nr_x):
             for y_i in xrange(0, nr_y):
