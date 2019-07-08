@@ -54,7 +54,7 @@ def deepscores_cnn(image, nr_class):
     pool5 = utils.max_pool_2x2(relu5)
     dropout5 = tf.nn.dropout(pool5, keep_prob=keep_prob)
 
-    # to fully connected layers
+    # two fully connected layers
     # downsampled 5 times so feature maps should be 32 times smaller
     # size is 7*4*512
     W_fc1 = utils.weight_variable([7*4*512, 1024])
@@ -139,7 +139,8 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   parser.add_argument("--batch_size", type=int, default=200, help="batch size for training")
   parser.add_argument("--test_batch_size", type=int, default=200, help="batch size for training")
-  parser.add_argument("--model_path", type=str, default="/Models/deepscores_class.ckpt", help="batch size for training")
+  parser.add_argument("--model_path", type=str, default="/Models/deepscores_class.ckpt",
+                      help="where to store the trained model")
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
