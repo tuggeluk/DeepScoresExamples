@@ -103,9 +103,9 @@ def main(unused_argv):
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(20000):
+        for i in range(5):
             batch = data_reader.next_batch(FLAGS.batch_size)
-            if i % 10000 == 0:
+            if i % 1000 == 0:
                 train_accuracy = accuracy.eval(feed_dict={
                     x: batch[0], y_: batch[1], keep_prob: 1.0})
                 print('step %d, training accuracy %g' % (i, train_accuracy))
@@ -135,11 +135,11 @@ def main(unused_argv):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--data_dir', type=str,
-                      default='../Datasets/DeepScores/DeepScores_classification',
+                      default='/Users/tugg/Documents/DeepScores_datasets_old/DeepScores2017_classification',
                       help='Directory for storing input data')
-  parser.add_argument("--batch_size", type=int, default=200, help="batch size for training")
+  parser.add_argument("--batch_size", type=int, default=2, help="batch size for training")
   parser.add_argument("--test_batch_size", type=int, default=200, help="batch size for training")
-  parser.add_argument("--model_path", type=str, default="/Models/deepscores_class.ckpt", help="batch size for training")
+  parser.add_argument("--model_path", type=str, default="Models/deepscores_class.ckpt", help="batch size for training")
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
