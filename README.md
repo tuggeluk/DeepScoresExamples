@@ -1,3 +1,5 @@
+***Please use [DeepScoresV2](https://zenodo.org/record/4012193) this repository is no longer supported.***
+
 # DeepScoresExamples
 ### Requires:
 - tensorflow
