@@ -3,7 +3,7 @@ Code ideas from https://github.com/Newmu/dcgan and tensorflow mnist dataset read
 """
 from past.builtins import xrange
 import numpy as np
-import scipy.misc as misc
+import imageio
 import pandas as pa
 import re
 import os
@@ -121,7 +121,7 @@ class class_dataset_reader:
         return None
 
     def load_image(self,folder,image, class_index):
-        image = misc.imread(self.path + "/" + folder + "/" + image)
+        image = imageio.imread(self.path + "/" + folder + "/" + image)
         nr_y = image.shape[0] // self.tile_size[0]
         nr_x = image.shape[1] // self.tile_size[1]
 

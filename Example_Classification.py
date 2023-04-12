@@ -103,7 +103,10 @@ def main(unused_argv):
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(5):
+
+        print("Training the network with %d training steps..." % FLAGS.num_steps)
+
+        for i in range(FLAGS.num_steps):
             batch = data_reader.next_batch(FLAGS.batch_size)
             if i % 1000 == 0:
                 train_accuracy = accuracy.eval(feed_dict={
@@ -139,7 +142,8 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   parser.add_argument("--batch_size", type=int, default=2, help="batch size for training")
   parser.add_argument("--test_batch_size", type=int, default=200, help="batch size for training")
-  parser.add_argument("--model_path", type=str, default="Models/deepscores_class.ckpt",
+  parser.add_argument("--num_steps", type=int, default=5, help="Number of training steps")
+  parser.add_argument("--model_path", type=str, default="./Models/deepscores_class.ckpt",
                       help="where to store the trained model")
 
   FLAGS, unparsed = parser.parse_known_args()
